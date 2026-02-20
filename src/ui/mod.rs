@@ -6,6 +6,7 @@ use iced::widget::row;
 use iced::widget::slider;
 use iced::widget::{button, canvas, checkbox, column, space, text, Column};
 use iced::Fill;
+use layout::ViewMode;
 use messages::Message;
 
 mod graph_renderer;
@@ -42,8 +43,14 @@ impl App {
                 Message::ResizeGraph(x as usize)
             }),
             space::horizontal().width(CONTAINER_PADDING_PX),
+            checkbox(self.gr.settings().view_mode == ViewMode::Forest)
+                .label("show trees")
+                .on_toggle(|v| {
+                    Message::ViewMode(if v { ViewMode::Forest } else { ViewMode::Chord })
+                }),
+            space::horizontal().width(CONTAINER_PADDING_PX),
             checkbox(self.gr.settings().root_positions == RootPositions::Sorted)
-                .label("sort nodes by tree")
+                .label("sort by tree size")
                 .on_toggle(|v| {
                     Message::RootPositions(if v {
                         RootPositions::Sorted

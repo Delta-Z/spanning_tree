@@ -11,14 +11,14 @@ pub struct ChordLayout {
 }
 
 impl GraphLayout for ChordLayout {
-    fn arrange_nodes(&self, viewport: Size) -> Vec<NodeCenterPoint> {
+    fn arrange_nodes(&self, viewport_size: Size) -> Vec<NodeCenterPoint> {
         let num_nodes = self.graph_to_chord_permutation.iter().max().unwrap_or(&0) + 1;
         let mut result: Vec<Option<NodeCenterPoint>> = vec![None; num_nodes];
         for (chord_position, node_index) in self.graph_to_chord_permutation.iter().enumerate() {
             result[*node_index] = Some(chord_position_for_index(
                 chord_position,
                 num_nodes,
-                viewport,
+                viewport_size,
             ));
         }
         result
@@ -27,15 +27,16 @@ impl GraphLayout for ChordLayout {
             .collect()
     }
 
-    fn node_radius(&self, viewport: Size) -> f32 {
+    fn node_radius(&self, viewport_size: Size) -> f32 {
         let num_nodes = self.graph_to_chord_permutation.len();
         if num_nodes == 1 {
-            chord_radius(viewport)
+            chord_radius(viewport_size)
         } else {
-            let distance_between_nodes = chord_position_for_index(0, num_nodes, viewport)
-                .distance(chord_position_for_index(1, num_nodes, viewport));
-            // (Radians::PI * 2.0 / graph.nodes().len() as f32).0.min(1.0) * chord_radius(viewport);
-            let chord_margin = viewport.height.min(viewport.width) / 2.0 - chord_radius(viewport);
+            let distance_between_nodes = chord_position_for_index(0, num_nodes, viewport_size)
+                .distance(chord_position_for_index(1, num_nodes, viewport_size));
+            // (Radians::PI * 2.0 / graph.nodes().len() as f32).0.min(1.0) * chord_radius(viewport_size);
+            let chord_margin =
+                viewport_size.height.min(viewport_size.width) / 2.0 - chord_radius(viewport_size);
             (distance_between_nodes * 0.35).min(chord_margin)
         }
     }
@@ -62,15 +63,17 @@ impl ChordLayout {
     }
 }
 
-fn chord_position_for_index(i: usize, n: usize, viewport: Size) -> NodeCenterPoint {
+fn chord_position_for_index(i: usize, n: usize, viewport_size: Size) -> NodeCenterPoint {
     if n == 1 {
-        return viewport_center(viewport);
+        return viewport_center(viewport_size);
     }
-    let angle = Radians::PI * 2.0 * (i as f32 / n as f32);
-    let radius = chord_radius(viewport);
-    viewport_center(viewport) + Vector::new(radius * angle.0.sin(), radius * angle.0.cos())
+    let angle = Radians::PI * 2.0 * (i as f32 / n as f32)
+        // Start from the top of the viewport_size
+        + Radians::PI;
+    let radius = chord_radius(viewport_size);
+    viewport_center(viewport_size) + Vector::new(radius * angle.0.sin(), radius * angle.0.cos())
 }
 
-fn chord_radius(viewport: Size) -> f32 {
-    viewport.width.min(viewport.height) / 2.4
+fn chord_radius(viewport_size: Size) -> f32 {
+    viewport_size.width.min(viewport_size.height) / 2.4
 }

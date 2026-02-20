@@ -41,10 +41,6 @@ impl Tree<'_> {
             .unwrap()
             + 1
     }
-
-    pub fn graph(&self) -> &Graph {
-        self.graph
-    }
 }
 
 impl fmt::Display for Tree<'_> {
@@ -127,10 +123,12 @@ impl Graph {
             .iter()
             .enumerate()
             .filter_map(|(i, n)| {
-                if n.parenting().is_root() {
-                    Some(Tree::new(self, self.subtree(i)))
-                } else {
+                if let Some(p) = n.parenting().parent()
+                        && self.nodes[p].parenting().confirmed_children().contains(&i)
+                {
                     None
+                } else {
+                    Some(Tree::new(self, self.subtree(i)))
                 }
             })
             .collect()

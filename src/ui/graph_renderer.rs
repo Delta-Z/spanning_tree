@@ -11,7 +11,6 @@ use iced::widget::canvas::{self, path, Cache, Frame, Geometry, LineDash, Path, S
 use iced::{alignment, Vector};
 use iced::{Color, Event, Point, Rectangle, Renderer, Theme};
 use rand::rngs::ThreadRng;
-use std::any::Any;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Settings {
@@ -83,11 +82,7 @@ impl Default for GraphRenderer {
     fn default() -> Self {
         let settings = Settings::default();
         let graph = Graph::new_random(Configuration::default(), &mut rand::rng());
-        let layout = Box::new(layout::graph_layout_for(
-            &graph,
-            settings.view_mode,
-            settings.root_positions,
-        ));
+        let layout = layout::graph_layout_for(&graph, settings.view_mode, settings.root_positions);
         Self {
             graph,
             settings,
@@ -237,17 +232,21 @@ impl GraphRenderer {
             Message::ShowTentativeRequests(new_value) => {
                 self.settings.show_tentative_requests = new_value
             }
-            _ => {
-                panic!("Unimplemented message {:?}", m.type_id())
-            }
+            Message::ViewMode(new_value) => self.settings.view_mode = new_value,
+            // _ => {
+            //     panic!("Unimplemented message {:?}", m.type_id())
+            // }
         }
         match m {
-            Message::ResizeGraph(_) | Message::RootPositions(_) | Message::NextRound => {
-                self.layout = Box::new(layout::graph_layout_for(
+            Message::ResizeGraph(_)
+            | Message::RootPositions(_)
+            | Message::ViewMode(_)
+            | Message::NextRound => {
+                self.layout = layout::graph_layout_for(
                     &self.graph,
                     self.settings.view_mode,
                     self.settings.root_positions,
-                ))
+                )
             }
             _ => {}
         }
