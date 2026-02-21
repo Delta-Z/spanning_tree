@@ -3,6 +3,7 @@ use iced::{Pixels, Point, Size};
 
 mod chord;
 mod forest;
+pub mod transition;
 
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum ViewMode {

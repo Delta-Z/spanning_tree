@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use super::layout::{self, GraphLayout, NodeCenterPoint, RootPositions, ViewMode};
 use super::messages::Message;
 use crate::algorithm::timers::RoundType;
@@ -5,6 +7,7 @@ use crate::graph::Graph;
 use crate::node::Node;
 use crate::tree_color::TreeColor;
 use crate::ui::canvas::Text;
+use crate::ui::layout::transition::LayoutWithTransitions;
 use crate::Configuration;
 use iced::mouse::{self, Button};
 use iced::widget::canvas::{self, path, Cache, Frame, Geometry, LineDash, Path, Stroke};
@@ -22,7 +25,7 @@ pub struct Settings {
 pub struct GraphRenderer {
     pub graph: Graph,
     settings: Settings,
-    layout: Box<dyn GraphLayout>,
+    layout: LayoutWithTransitions,
     render_cache: Cache,
     rng: ThreadRng,
 }
@@ -82,7 +85,11 @@ impl Default for GraphRenderer {
     fn default() -> Self {
         let settings = Settings::default();
         let graph = Graph::new_random(Configuration::default(), &mut rand::rng());
-        let layout = layout::graph_layout_for(&graph, settings.view_mode, settings.root_positions);
+        let layout = LayoutWithTransitions::new(layout::graph_layout_for(
+            &graph,
+            settings.view_mode,
+            settings.root_positions,
+        ));
         Self {
             graph,
             settings,
@@ -169,7 +176,7 @@ impl GraphRenderer {
         let node_circle = Path::circle(center, node_radius);
         frame.fill(&node_circle, NODE_COLOR);
 
-        let text_size = layout::text_size(&(*self.layout), frame.size());
+        let text_size = layout::text_size(&self.layout, frame.size());
         let extra_text = node.timers().to_string();
         frame.fill_text(Text {
             content: node.parenting().tree_id().to_string(),
@@ -224,6 +231,14 @@ impl GraphRenderer {
         }
     }
 
+    pub fn is_animating(&self) -> bool {
+        self.layout.is_in_transition()
+    }
+
+    pub fn tick(&mut self, now: Instant) {
+        self.layout.tick(now)
+    }
+
     pub fn apply_update(&mut self, m: Message) {
         match m {
             Message::ResizeGraph(new_size) => self.graph.resize(new_size, &mut self.rng),
@@ -233,24 +248,26 @@ impl GraphRenderer {
                 self.settings.show_tentative_requests = new_value
             }
             Message::ViewMode(new_value) => self.settings.view_mode = new_value,
-            // _ => {
-            //     panic!("Unimplemented message {:?}", m.type_id())
-            // }
+            Message::Animate => {}
         }
         match m {
-            Message::ResizeGraph(_)
-            | Message::RootPositions(_)
-            | Message::ViewMode(_)
-            | Message::NextRound => {
-                self.layout = layout::graph_layout_for(
-                    &self.graph,
-                    self.settings.view_mode,
-                    self.settings.root_positions,
-                )
+            Message::ResizeGraph(_) => {
+                self.layout = LayoutWithTransitions::new(self.new_graph_layout())
             }
+            Message::RootPositions(_) | Message::ViewMode(_) | Message::NextRound => self
+                .layout
+                .transition_to(self.new_graph_layout(), Duration::from_secs(2)),
             _ => {}
         }
         self.render_cache.clear();
+    }
+
+    fn new_graph_layout(&self) -> Box<dyn GraphLayout> {
+        layout::graph_layout_for(
+            &self.graph,
+            self.settings.view_mode,
+            self.settings.root_positions,
+        )
     }
 }
 

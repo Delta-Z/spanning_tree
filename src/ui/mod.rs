@@ -1,11 +1,14 @@
 use crate::ui::layout::RootPositions;
 use graph_renderer::GraphRenderer;
 use iced::alignment::Vertical;
+use iced::time::Instant;
 use iced::widget::container;
 use iced::widget::row;
 use iced::widget::slider;
 use iced::widget::{button, canvas, checkbox, column, space, text, Column};
+use iced::window;
 use iced::Fill;
+use iced::Subscription;
 use layout::ViewMode;
 use messages::Message;
 
@@ -23,7 +26,7 @@ const CONTAINER_PADDING_PX: f32 = 10.0;
 
 impl App {
     pub fn run() -> iced::Result {
-        iced::run(Self::update, Self::view)
+        iced::application::timed(Self::default, Self::update, Self::subscription, Self::view).run()
     }
 
     fn view(&self) -> Column<'_, Message> {
@@ -73,11 +76,20 @@ impl App {
         column![graph_render, controls]
     }
 
-    fn update(&mut self, m: Message) {
+    fn subscription(&self) -> Subscription<Message> {
+        if self.gr.is_animating() {
+            window::frames().map(|_| Message::Animate)
+        } else {
+            Subscription::none()
+        }
+    }
+
+    fn update(&mut self, m: Message, now: Instant) {
         if let Message::NextRound = m {
             self.round_number += 1;
             println!("Round {}", self.round_number);
         }
-        self.gr.apply_update(m)
+        self.gr.tick(now);
+        self.gr.apply_update(m);
     }
 }

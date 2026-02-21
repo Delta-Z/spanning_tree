@@ -8,4 +8,5 @@ pub enum Message {
     ViewMode(ViewMode),
     RootPositions(RootPositions),
     ShowTentativeRequests(bool),
+    Animate,
 }
