@@ -59,6 +59,46 @@ impl LayoutWithTransitions {
         let Some((animation, transition_point)) = self.transition.as_mut() else { return };
         if animation.is_animating(now) {
             *transition_point = animation.interpolate(0.0, 1.0, now);
-        } else { self.transition = None  }
+        } else {
+            self.transition = None;
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, Instant};
+
+    use super::LayoutWithTransitions;
+    use crate::{tree_color::TreeColor, tree_id::TreeId, ui::layout::*};
+
+    fn make_layout(g: &Graph) -> Box<dyn GraphLayout> {
+        graph_layout_for(g, ViewMode::Chord, RootPositions::Constant)
+    }
+
+    #[test]
+    fn new_simple() {
+        let g = Graph::new_test(vec![(TreeId::new_simple(1), TreeColor::of(1))], 1);
+        let mut layout = LayoutWithTransitions::new(make_layout(&g));
+        
+        assert!(!layout.is_in_transition());
+        layout.tick(Instant::now());
+        assert!(layout.transition.is_none());
+        assert!(!layout.is_in_transition());
+
+        let start = Instant::now();
+        layout.transition_to(make_layout(&g), Duration::from_secs(2));
+        assert_eq!(layout.transition.as_ref().unwrap().1, 0.0);
+
+        layout.tick(start + Duration::from_secs(1));
+        let midpoint = layout.transition.as_ref().unwrap().1;
+        assert!(midpoint > 0.0);
+        assert!(midpoint < 1.0);
+        assert!(layout.is_in_transition());
+
+        layout.tick(start + Duration::from_secs(2));
+        assert!(layout.transition.is_none());
+        assert!(!layout.is_in_transition());
     }
 }

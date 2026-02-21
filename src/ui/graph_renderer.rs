@@ -236,7 +236,7 @@ impl GraphRenderer {
     }
 
     pub fn tick(&mut self, now: Instant) {
-        self.layout.tick(now)
+        self.layout.tick(now);
     }
 
     pub fn apply_update(&mut self, m: Message) {

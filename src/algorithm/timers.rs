@@ -167,7 +167,7 @@ mod tests {
         assert_eq!(td.to_string(), "conv in 10\n");
         td.advance_time();
         td.start_reset(&conf);
-        assert_eq!(td.to_string(), "reset in 10\nconvin 9\n");
+        assert_eq!(td.to_string(), "reset in 10\nconv in 9\n");
         td.advance_time();
         assert_eq!(td.to_string(), "reset in 9\nconv in 8\n");
     }
