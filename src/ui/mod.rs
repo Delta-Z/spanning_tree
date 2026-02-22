@@ -15,6 +15,7 @@ use messages::Message;
 mod graph_renderer;
 pub mod layout;
 mod messages;
+pub mod timer;
 
 #[derive(Default)]
 pub struct App {

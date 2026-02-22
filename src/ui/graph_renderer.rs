@@ -254,9 +254,13 @@ impl GraphRenderer {
             Message::ResizeGraph(_) => {
                 self.layout = LayoutWithTransitions::new(self.new_graph_layout())
             }
-            Message::RootPositions(_) | Message::ViewMode(_) | Message::NextRound => self
-                .layout
-                .transition_to(self.new_graph_layout(), Duration::from_secs(2)),
+            Message::RootPositions(_) | Message::ViewMode(_) | Message::NextRound => {
+                self.layout.transition_to(
+                    self.new_graph_layout(),
+                    Instant::now(),
+                    Duration::from_secs(2),
+                )
+            }
             _ => {}
         }
         self.render_cache.clear();

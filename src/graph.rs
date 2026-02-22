@@ -7,10 +7,14 @@ use crate::Configuration;
 use rand::Rng;
 use std::fmt;
 
+type ReceivedMessages = Vec<ReceivedMessage>;
+type MessageRouting = Vec<ReceivedMessages>;
+
 #[derive(Debug)]
 pub struct Graph {
     conf: Configuration,
     nodes: Vec<Node>,
+    messages: MessageRouting,
 }
 
 #[derive(Debug)]
@@ -70,6 +74,7 @@ impl std::iter::IntoIterator for Tree<'_> {
 impl Graph {
     pub fn new_random(conf: Configuration, rng: &mut impl Rng) -> Self {
         let mut g = Graph {
+            messages: no_messages(&conf),
             conf,
             nodes: Vec::new(),
         };
@@ -94,7 +99,7 @@ impl Graph {
             .into_iter()
             .map(|(id, color)| Node::new_root(&conf, id, color))
             .collect();
-        Graph { conf, nodes }
+        Graph { messages: no_messages(&conf), conf, nodes }
     }
 
     pub fn nodes(&self) -> &[Node] {
@@ -111,10 +116,14 @@ impl Graph {
         self.conf.n = new_size;
         self.nodes
             .resize_with(new_size, || Node::new_random_root(&self.conf, rng));
+        self.messages.resize(new_size, vec![]);
         if downsized {
             self.nodes
                 .iter_mut()
                 .for_each(|n| n.update_for_configuration(&self.conf));
+            for messages in &mut self.messages {
+                messages.retain(|m| m.source < new_size);
+            }
         }
     }
 
@@ -135,21 +144,29 @@ impl Graph {
     }
 
     pub fn execute_round(&mut self, rng: &mut impl Rng) {
-        let mut message_routing = vec![Vec::<ReceivedMessage>::new(); self.nodes.len()];
+        self.receive_messages(rng);
+        self.send_messages();
+    }
+
+    fn send_messages(&mut self) {
         for (i, n) in self.nodes.iter().enumerate() {
             for m in n.send_messages() {
                 assert!(
                     m.destination != i,
                     "Node {i} tried to send message to itself"
                 );
-                message_routing[m.destination].push(ReceivedMessage {
+                self.messages[m.destination].push(ReceivedMessage {
                     source: i,
                     message: m.message,
                 });
             }
         }
-        for (i, messages) in message_routing.into_iter().enumerate() {
+    }
+
+    fn receive_messages(&mut self, rng: &mut impl Rng) {
+        for i in 0..self.messages.len() {
             let n = &mut self.nodes[i];
+            let messages = std::mem::take(&mut self.messages[i]);
             n.receive_messages(messages, &self.conf, i, rng);
             n.advance_time(&self.conf, rng);
         }
@@ -164,4 +181,8 @@ impl Graph {
             .for_each(|i| result.extend(self.subtree(*i)));
         result
     }
+}
+
+fn no_messages(conf: &Configuration) -> MessageRouting {
+    vec![ReceivedMessages::new(); conf.n]
 }
