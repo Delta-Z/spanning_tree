@@ -4,15 +4,16 @@ use super::layout::{self, GraphLayout, NodeCenterPoint, RootPositions, ViewMode}
 use super::messages::Message;
 use crate::algorithm::timers::RoundType;
 use crate::graph::Graph;
+use crate::messages::Message as NodeMessage;
 use crate::node::Node;
 use crate::tree_color::TreeColor;
+use crate::tree_id::TreeId;
 use crate::ui::canvas::Text;
 use crate::ui::layout::transition::LayoutWithTransitions;
 use crate::Configuration;
 use iced::mouse::{self, Button};
 use iced::widget::canvas::{self, path, Cache, Frame, Geometry, LineDash, Path, Stroke};
-use iced::{alignment, Vector};
-use iced::{Color, Event, Point, Rectangle, Renderer, Theme};
+use iced::{alignment, Color, Event, Point, Rectangle, Renderer, Theme, Vector};
 use rand::rngs::ThreadRng;
 
 #[derive(Copy, Clone, Debug)]
@@ -60,7 +61,21 @@ impl iced::widget::canvas::Program<Message> for GraphRenderer {
     ) -> Option<canvas::Action<Message>> {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(Button::Left)) => {
-                if cursor.is_over(bounds) {
+                if let Some(cursor_position) = cursor.position_in(bounds) {
+                    let node_radius = self.layout.node_radius(bounds.size());
+                    for (i, node_center) in self
+                        .layout
+                        .arrange_nodes(bounds.size())
+                        .into_iter()
+                        .enumerate()
+                    {
+                        if cursor_position.distance(node_center) < node_radius {
+                            return Some(canvas::Action::publish(Message::EditNode(
+                                i,
+                                node_center,
+                            )));
+                        }
+                    }
                     Some(canvas::Action::publish(Message::NextRound).and_capture())
                 } else {
                     None
@@ -84,7 +99,14 @@ impl Default for Settings {
 impl Default for GraphRenderer {
     fn default() -> Self {
         let settings = Settings::default();
-        let graph = Graph::new_random(Configuration::default(), &mut rand::rng());
+        let graph = Graph::new_test(
+            vec![
+                (TreeId::new_simple(1), TreeColor::of(1)),
+                (TreeId::new_simple(2), TreeColor::of(2)),
+                (TreeId::new_simple(3), TreeColor::of(3)),
+            ],
+            Configuration::default().d,
+        );
         let layout = LayoutWithTransitions::new(layout::graph_layout_for(
             &graph,
             settings.view_mode,
@@ -134,35 +156,30 @@ impl GraphRenderer {
 
     fn render(&self, frame: &mut Frame<Renderer>) {
         let node_positions = self.layout.arrange_nodes(frame.size());
+        let node_colors: Vec<Color> = self
+            .graph
+            .nodes()
+            .iter()
+            .map(|n| self.tree_color(n.color()))
+            .collect();
         let node_radius = self.layout.node_radius(frame.size());
         for (i, pos) in node_positions.iter().enumerate() {
-            let node = self.graph.nodes().get(i).unwrap();
-            let color = self.tree_color(node.color());
-            self.draw_node(frame, node, node_radius, *pos);
-            if self.settings.show_tentative_requests
-                && node.timers().get_round_type() == RoundType::ExchangeRequests
-            {
-                self.draw_children(
-                    frame,
-                    *pos,
-                    node.parenting()
-                        .tentative_children()
-                        .iter()
-                        .map(|ci| *node_positions.get(*ci).unwrap())
-                        .collect(),
-                    stroke(&color, true),
-                )
-            }
-            self.draw_children(
+            self.draw_node(
                 frame,
+                self.graph.nodes().get(i).unwrap(),
+                node_radius,
                 *pos,
-                node.parenting()
-                    .confirmed_children()
-                    .iter()
-                    .map(|ci| *node_positions.get(*ci).unwrap())
-                    .collect(),
-                stroke(&color, false),
+                node_colors[i],
             );
+            for incoming_message in &self.graph.in_flight_messages()[i] {
+                self.draw_message(
+                    frame,
+                    node_positions[incoming_message.source],
+                    *pos,
+                    &incoming_message.message,
+                    node_colors[incoming_message.source],
+                );
+            }
         }
     }
 
@@ -172,6 +189,7 @@ impl GraphRenderer {
         node: &Node,
         node_radius: f32,
         center: NodeCenterPoint,
+        color: Color,
     ) {
         let node_circle = Path::circle(center, node_radius);
         frame.fill(&node_circle, NODE_COLOR);
@@ -202,7 +220,7 @@ impl GraphRenderer {
             frame.stroke(
                 &node_circle,
                 Stroke::default()
-                    .with_color(self.tree_color(node.color()))
+                    .with_color(color)
                     .with_width((node_radius * NODE_REQUEST_BORDER_RATIO).min(5.0)),
             );
         }
@@ -212,23 +230,33 @@ impl GraphRenderer {
         const MAX_RGB: u32 = (1u32 << 24) - 1;
         let color_position_in_range =
             tree_color.value as f64 / self.graph.configuration().max_color() as f64;
-        let bytes = ((MAX_RGB as f64 * color_position_in_range) as u32 ^ 0x5aa5aa).to_le_bytes();
+        let bytes = ((MAX_RGB as f64 * color_position_in_range) as u32 ^ 0xa5285a).to_le_bytes();
         // assert_eq!(bytes[3], 0);
         Color::from_rgb8(bytes[0], bytes[1], bytes[2])
     }
 
-    fn draw_children(
+    fn draw_message(
         &self,
         frame: &mut Frame<Renderer>,
-        parent: NodeCenterPoint,
-        children: Vec<NodeCenterPoint>,
-        stroke: Stroke,
+        from: NodeCenterPoint,
+        to: NodeCenterPoint,
+        message: &NodeMessage,
+        source_color: Color,
     ) {
-        let node_radius = self.layout.node_radius(frame.size());
-        // let center = Vector::new(frame.center().x, frame.center().y);
-        for child in children {
-            frame.stroke(&request_arc(parent, child, node_radius, None), stroke);
-        }
+        let stroke = match message {
+            NodeMessage::Request(ti) => {
+                if !self.settings.show_tentative_requests {
+                    return;
+                }
+                stroke(self.tree_color(ti.color), true)
+            }
+            NodeMessage::Confirmation(Some(color)) => stroke(self.tree_color(*color), false),
+            NodeMessage::Confirmation(None) => stroke(source_color.scale_alpha(0.5), false),
+        };
+        frame.stroke(
+            &request_arc(from, to, self.layout.node_radius(frame.size()), None),
+            stroke,
+        )
     }
 
     pub fn is_animating(&self) -> bool {
@@ -248,7 +276,7 @@ impl GraphRenderer {
                 self.settings.show_tentative_requests = new_value
             }
             Message::ViewMode(new_value) => self.settings.view_mode = new_value,
-            Message::Animate => {}
+            Message::Animate | Message::EditNode(_, _) => {}
         }
         match m {
             Message::ResizeGraph(_) => {
@@ -298,9 +326,9 @@ fn request_arc(
     path.build()
 }
 
-fn stroke(color: &'_ Color, dashed: bool) -> Stroke<'_> {
+fn stroke(color: Color, dashed: bool) -> Stroke<'static> {
     Stroke {
-        style: (*color).into(),
+        style: color.into(),
         width: REQUEST_ARC_WIDTH,
         line_dash: if dashed {
             LineDash {

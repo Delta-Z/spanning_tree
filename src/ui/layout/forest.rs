@@ -86,7 +86,7 @@ impl GraphLayout for ForestLayout {
     }
 
     fn node_radius(&self, viewport_size: Size) -> f32 {
-        viewport_size.width.min(viewport_size.height) / (self.total_nodes as f32).sqrt() / 3.0
+        viewport_size.width.min(viewport_size.height) / (self.total_nodes as f32).sqrt() / 4.0
     }
 }
 

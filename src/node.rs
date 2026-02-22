@@ -73,8 +73,7 @@ impl Node {
     }
 
     pub fn advance_time(&mut self, conf: &Configuration, rng: &mut impl Rng) {
-        self.timers.advance_time();
-        if self.timers.should_reset() {
+        if !self.timers.advance_time() {
             self.reset(conf, rng);
         }
     }

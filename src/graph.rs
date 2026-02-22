@@ -145,7 +145,12 @@ impl Graph {
 
     pub fn execute_round(&mut self, rng: &mut impl Rng) {
         self.receive_messages(rng);
+        self.nodes.iter_mut().for_each(|n| n.advance_time(&self.conf, rng));
         self.send_messages();
+    }
+
+    pub fn in_flight_messages(&self) -> &[ReceivedMessages] {
+        &self.messages
     }
 
     fn send_messages(&mut self) {
@@ -168,7 +173,6 @@ impl Graph {
             let n = &mut self.nodes[i];
             let messages = std::mem::take(&mut self.messages[i]);
             n.receive_messages(messages, &self.conf, i, rng);
-            n.advance_time(&self.conf, rng);
         }
     }
 

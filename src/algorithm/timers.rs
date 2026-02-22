@@ -82,14 +82,17 @@ impl TimersData {
         self.reset_countdown == 1
     }
 
-    pub fn advance_time(&mut self) {
+    pub fn advance_time(&mut self) -> bool {
+        self.round_type = self.round_type.next();
         if self.convergence_timer > 0 {
             self.convergence_timer -= 1;
         }
-        if self.reset_countdown > 1 {
+        if self.reset_countdown > 0 {
             self.reset_countdown -= 1;
+            self.reset_countdown > 0
+        } else {
+            true
         }
-        self.round_type = self.round_type.next();
     }
 
     pub fn reset_countdown(&self) -> usize {

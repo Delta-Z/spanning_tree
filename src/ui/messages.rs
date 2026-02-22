@@ -1,4 +1,4 @@
-use super::layout::{RootPositions, ViewMode};
+use super::layout::{NodeCenterPoint, RootPositions, ViewMode};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
@@ -8,5 +8,6 @@ pub enum Message {
     ViewMode(ViewMode),
     RootPositions(RootPositions),
     ShowTentativeRequests(bool),
+    EditNode(usize, NodeCenterPoint),
     Animate,
 }
