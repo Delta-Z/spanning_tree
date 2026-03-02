@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use super::layout::{self, GraphLayout, NodeCenterPoint, RootPositions, ViewMode};
 use super::messages::Message;
 use crate::algorithm::timers::RoundType;
-use crate::graph::Graph;
+use crate::graph::{Graph, NodeIndex};
 use crate::messages::Message as NodeMessage;
 use crate::node::Node;
 use crate::tree_color::TreeColor;
@@ -13,7 +13,7 @@ use crate::ui::layout::transition::LayoutWithTransitions;
 use crate::Configuration;
 use iced::mouse::{self, Button};
 use iced::widget::canvas::{self, path, Cache, Frame, Geometry, LineDash, Path, Stroke};
-use iced::{alignment, Color, Event, Point, Rectangle, Renderer, Theme, Vector};
+use iced::{alignment, Color, Event, Point, Rectangle, Renderer, Size, Theme, Vector};
 use rand::rngs::ThreadRng;
 
 #[derive(Copy, Clone, Debug)]
@@ -70,10 +70,10 @@ impl iced::widget::canvas::Program<Message> for GraphRenderer {
                         .enumerate()
                     {
                         if cursor_position.distance(node_center) < node_radius {
-                            return Some(canvas::Action::publish(Message::EditNode(
-                                i,
-                                node_center,
-                            )));
+                            println!("click {} -> {} [{:?}]", i, node_center, bounds.size());
+                            return Some(
+                                canvas::Action::publish(Message::EditNode(i)).and_capture(),
+                            );
                         }
                     }
                     Some(canvas::Action::publish(Message::NextRound).and_capture())
@@ -231,7 +231,6 @@ impl GraphRenderer {
         let color_position_in_range =
             tree_color.value as f64 / self.graph.configuration().max_color() as f64;
         let bytes = ((MAX_RGB as f64 * color_position_in_range) as u32 ^ 0xa5285a).to_le_bytes();
-        // assert_eq!(bytes[3], 0);
         Color::from_rgb8(bytes[0], bytes[1], bytes[2])
     }
 
@@ -276,7 +275,7 @@ impl GraphRenderer {
                 self.settings.show_tentative_requests = new_value
             }
             Message::ViewMode(new_value) => self.settings.view_mode = new_value,
-            Message::Animate | Message::EditNode(_, _) => {}
+            Message::Animate | Message::EditNode(_) => {}
         }
         match m {
             Message::ResizeGraph(_) => {
@@ -292,6 +291,11 @@ impl GraphRenderer {
             _ => {}
         }
         self.render_cache.clear();
+    }
+
+    pub fn node_bounds(&self, node_index: NodeIndex, viewport_size: Size) -> Option<Rectangle> {
+        let node_center = *self.layout.arrange_nodes(viewport_size).get(node_index)?;
+        Some(Rectangle::new(node_center, Size::ZERO).expand(self.layout.node_radius(viewport_size)))
     }
 
     fn new_graph_layout(&self) -> Box<dyn GraphLayout> {

@@ -1,3 +1,4 @@
+use crate::graph::NodeIndex;
 use crate::tree_color::TreeColor;
 use crate::tree_info::TreeInfo;
 
@@ -9,12 +10,12 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub struct SentMessage {
-    pub destination: usize,
+    pub destination: NodeIndex,
     pub message: Message,
 }
 
 #[derive(Clone, Debug)]
 pub struct ReceivedMessage {
-    pub source: usize,
+    pub source: NodeIndex,
     pub message: Message,
 }

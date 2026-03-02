@@ -1,5 +1,5 @@
 use super::{viewport_center, GraphLayout, NodeCenterPoint, RootPositions};
-use crate::graph::Graph;
+use crate::graph::{Graph, NodeIndex};
 use iced::Vector;
 use iced::{Radians, Size};
 use indexmap::IndexSet;
@@ -7,7 +7,7 @@ use itertools::Itertools;
 use std::hash::RandomState;
 
 pub struct ChordLayout {
-    graph_to_chord_permutation: Vec<usize>,
+    graph_to_chord_permutation: Vec<NodeIndex>,
 }
 
 impl GraphLayout for ChordLayout {
@@ -49,7 +49,7 @@ impl ChordLayout {
             graph_to_chord_permutation: match root_positions {
                 RootPositions::Constant => (0..num_nodes).collect_vec(),
                 RootPositions::Sorted => {
-                    let mut result: IndexSet<usize> = graph
+                    let mut result: IndexSet<NodeIndex> = graph
                         .trees()
                         .into_iter()
                         .sorted_by_key(|t| -(t.nodes().len() as i64))

@@ -1,18 +1,19 @@
+use crate::graph::NodeIndex;
 use crate::Rng;
 
 pub struct RandomPeerGenerator<'a, R: Rng> {
-    excluded: Vec<usize>,
+    excluded: Vec<NodeIndex>,
     num_peers: usize,
     rng: &'a mut R,
 }
 
 pub trait PeerGenerator {
-    fn generate_peer(&mut self) -> Option<usize>;
-    fn exclude(&mut self, additional_excludes: Vec<usize>);
+    fn generate_peer(&mut self) -> Option<NodeIndex>;
+    fn exclude(&mut self, additional_excludes: Vec<NodeIndex>);
 }
 
 impl<'a, R: Rng> RandomPeerGenerator<'a, R> {
-    pub fn new(num_peers: usize, mut excluded: Vec<usize>, rng: &'a mut R) -> Self {
+    pub fn new(num_peers: usize, mut excluded: Vec<NodeIndex>, rng: &'a mut R) -> Self {
         if !excluded.is_empty() {
             excluded.sort_unstable();
             let largest_excluded = *excluded.last().unwrap();
@@ -32,12 +33,12 @@ impl<'a, R: Rng> RandomPeerGenerator<'a, R> {
 }
 
 impl<R: Rng> PeerGenerator for RandomPeerGenerator<'_, R> {
-    fn generate_peer(&mut self) -> Option<usize> {
+    fn generate_peer(&mut self) -> Option<NodeIndex> {
         let remaining = self.num_peers as i64 - self.excluded.len() as i64;
         if remaining <= 0 {
             return None;
         }
-        let mut result = self.rng.random_range(0..remaining as usize);
+        let mut result = self.rng.random_range(0..remaining as NodeIndex);
         for (i, excluded) in self.excluded.iter().enumerate() {
             if *excluded > result {
                 self.excluded.insert(i, result);
@@ -51,7 +52,7 @@ impl<R: Rng> PeerGenerator for RandomPeerGenerator<'_, R> {
         Some(result)
     }
 
-    fn exclude(&mut self, additional_excludes: std::vec::Vec<usize>) {
+    fn exclude(&mut self, additional_excludes: std::vec::Vec<NodeIndex>) {
         self.excluded.extend(additional_excludes);
         self.excluded.sort_unstable();
     }
@@ -73,7 +74,7 @@ mod tests {
         let mut rng = rand::rng();
         let mut g = RandomPeerGenerator::new(5, vec![], &mut rng);
         let expected = vec![0, 1, 2, 3, 4];
-        let mut generated: Vec<usize> = (0..expected.len())
+        let mut generated: Vec<NodeIndex> = (0..expected.len())
             .map_while(|_| g.generate_peer())
             .collect();
         generated.sort_unstable();
@@ -86,7 +87,7 @@ mod tests {
         let mut rng = rand::rng();
         let mut g = RandomPeerGenerator::new(10, vec![2, 3, 5, 7], &mut rng);
         let expected = vec![0, 1, 4, 6, 8, 9];
-        let mut generated: Vec<usize> = (0..expected.len())
+        let mut generated: Vec<NodeIndex> = (0..expected.len())
             .map_while(|_| g.generate_peer())
             .collect();
         generated.sort_unstable();

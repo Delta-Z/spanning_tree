@@ -1,4 +1,5 @@
-use super::layout::{NodeCenterPoint, RootPositions, ViewMode};
+use super::layout::{RootPositions, ViewMode};
+use crate::graph::NodeIndex;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Message {
@@ -8,6 +9,8 @@ pub enum Message {
     ViewMode(ViewMode),
     RootPositions(RootPositions),
     ShowTentativeRequests(bool),
-    EditNode(usize, NodeCenterPoint),
+    // Graph editor:
+    EditNode(NodeIndex),
+    // Generic animation:
     Animate,
 }

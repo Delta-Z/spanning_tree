@@ -7,6 +7,7 @@ use crate::Configuration;
 use rand::Rng;
 use std::fmt;
 
+pub type NodeIndex = usize;
 type ReceivedMessages = Vec<ReceivedMessage>;
 type MessageRouting = Vec<ReceivedMessages>;
 
@@ -19,21 +20,21 @@ pub struct Graph {
 
 #[derive(Debug)]
 pub struct Tree<'a> {
-    nodes: Vec<usize>,
+    nodes: Vec<NodeIndex>,
     graph: &'a Graph,
 }
 
 impl Tree<'_> {
-    pub fn new<'a>(graph: &'a Graph, nodes: Vec<usize>) -> Tree<'a> {
+    pub fn new<'a>(graph: &'a Graph, nodes: Vec<NodeIndex>) -> Tree<'a> {
         assert!(!nodes.is_empty(), "Tree cannot be empty!");
         Tree::<'a> { nodes, graph }
     }
 
-    pub fn root(&self) -> usize {
+    pub fn root(&self) -> NodeIndex {
         self.nodes[0]
     }
 
-    pub fn nodes(&self) -> &[usize] {
+    pub fn nodes(&self) -> &[NodeIndex] {
         &self.nodes
     }
 
@@ -63,8 +64,8 @@ impl fmt::Display for Tree<'_> {
 }
 
 impl std::iter::IntoIterator for Tree<'_> {
-    type Item = usize;
-    type IntoIter = std::vec::IntoIter<usize>;
+    type Item = NodeIndex;
+    type IntoIter = std::vec::IntoIter<NodeIndex>;
 
     fn into_iter(self) -> <Self as std::iter::IntoIterator>::IntoIter {
         self.nodes.into_iter()
@@ -176,7 +177,7 @@ impl Graph {
         }
     }
 
-    fn subtree(&self, node_index: usize) -> Vec<usize> {
+    fn subtree(&self, node_index: NodeIndex) -> Vec<NodeIndex> {
         let mut result = vec![node_index];
         self.nodes[node_index]
             .parenting()

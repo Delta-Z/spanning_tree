@@ -1,10 +1,8 @@
-#![allow(unused)]
-
 use iced::{Padding, Rectangle, Size};
 use itertools::Itertools;
 
 use super::{GraphLayout, NodeCenterPoint};
-use crate::graph::Graph;
+use crate::graph::{Graph, NodeIndex};
 use crate::ui::RootPositions;
 
 pub struct ForestLayout {
@@ -12,14 +10,14 @@ pub struct ForestLayout {
     trees: Vec<Tree>,
 }
 
-type TreeLevel = Vec<usize>;
+type TreeLevel = Vec<NodeIndex>;
 
 struct Tree {
     levels: Vec<TreeLevel>,
 }
 
 impl Tree {
-    fn new(root: usize, graph: &Graph) -> Self {
+    fn new(root: NodeIndex, graph: &Graph) -> Self {
         let mut result = Self {
             levels: vec![vec![root]],
         };
@@ -42,10 +40,6 @@ impl Tree {
 
     fn max_width(&self) -> usize {
         self.levels.iter().map(|l| l.len()).max().unwrap()
-    }
-
-    fn levels(&self) -> &[TreeLevel] {
-        &self.levels
     }
 }
 

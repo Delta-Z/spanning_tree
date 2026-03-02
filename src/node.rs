@@ -4,6 +4,7 @@ use crate::algorithm::timers;
 use crate::algorithm::timers::RoundType;
 use crate::algorithm::timers::TimersData;
 use crate::algorithm::RandomizableData;
+use crate::graph::NodeIndex;
 use crate::messages::Message;
 use crate::messages::ReceivedMessage;
 use crate::messages::SentMessage;
@@ -82,7 +83,7 @@ impl Node {
         &mut self,
         messages: Vec<ReceivedMessage>,
         conf: &Configuration,
-        self_id: usize,
+        self_id: NodeIndex,
         rng: &mut impl Rng,
     ) {
         timers::process_messages(

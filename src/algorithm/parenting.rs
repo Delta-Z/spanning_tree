@@ -1,4 +1,5 @@
 use crate::algorithm::RandomizableData;
+use crate::graph::NodeIndex;
 use crate::messages::Message;
 use crate::messages::ReceivedMessage;
 use crate::messages::SentMessage;
@@ -12,14 +13,14 @@ use std::cmp::Ordering;
 #[derive(Debug)]
 pub struct ParentingData {
     tree_id: TreeId,
-    parent: Option<usize>,
+    parent: Option<NodeIndex>,
     my_depth: usize,
-    children: Vec<usize>,
+    children: Vec<NodeIndex>,
     num_confirmed_children: usize,
 }
 
 struct ReceivedRequest {
-    pub source: usize,
+    pub source: NodeIndex,
     pub tree_info: TreeInfo,
 }
 
@@ -74,7 +75,7 @@ impl ParentingData {
         self.parent.is_none()
     }
 
-    pub fn parent(&self) -> Option<usize> {
+    pub fn parent(&self) -> Option<NodeIndex> {
         self.parent
     }
 
@@ -82,11 +83,11 @@ impl ParentingData {
         self.my_depth
     }
 
-    pub fn confirmed_children(&self) -> &[usize] {
+    pub fn confirmed_children(&self) -> &[NodeIndex] {
         &self.children[..self.num_confirmed_children]
     }
 
-    pub fn tentative_children(&self) -> &[usize] {
+    pub fn tentative_children(&self) -> &[NodeIndex] {
         &self.children[self.num_confirmed_children..]
     }
 
@@ -113,7 +114,7 @@ impl ParentingData {
     fn regenerate_children(
         &mut self,
         conf: &Configuration,
-        confirmed_children: Vec<usize>,
+        confirmed_children: Vec<NodeIndex>,
         mut pg: impl PeerGenerator,
     ) {
         self.children

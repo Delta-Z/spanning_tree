@@ -1,12 +1,18 @@
+use crate::graph::NodeIndex;
 use crate::ui::layout::RootPositions;
 use graph_renderer::GraphRenderer;
+use iced::alignment::Horizontal;
 use iced::alignment::Vertical;
 use iced::time::Instant;
 use iced::widget::container;
 use iced::widget::row;
 use iced::widget::slider;
+use iced::widget::text_input;
+use iced::widget::Float;
+use iced::widget::Stack;
 use iced::widget::{button, canvas, checkbox, column, space, text, Column};
 use iced::window;
+use iced::Element;
 use iced::Fill;
 use iced::Subscription;
 use layout::ViewMode;
@@ -17,10 +23,15 @@ pub mod layout;
 mod messages;
 pub mod timer;
 
+enum GraphEditing {
+    EditNode(NodeIndex, String),
+}
+
 #[derive(Default)]
 pub struct App {
     gr: GraphRenderer,
     round_number: usize,
+    graph_editing: Option<GraphEditing>,
 }
 
 const CONTAINER_PADDING_PX: f32 = 10.0;
@@ -31,8 +42,18 @@ impl App {
     }
 
     fn view(&self) -> Column<'_, Message> {
-        let graph_render =
-            container(canvas(&self.gr).width(Fill).height(Fill)).padding(CONTAINER_PADDING_PX);
+        let mut graphics = vec![container(canvas(&self.gr).width(Fill).height(Fill))
+            .padding(CONTAINER_PADDING_PX)
+            .into()];
+        if let Some(graph_editing) = &self.graph_editing {
+            match graph_editing {
+                GraphEditing::EditNode(node_index, output) => {
+                    graphics.push(self.node_editor(*node_index, output))
+                }
+            }
+        }
+
+        let graphics_container = Stack::from_vec(graphics).width(Fill).height(Fill);
         let num_trees = self.gr.num_trees();
         let mut status = format!("round {}, {} tree", self.round_number, num_trees).to_string();
         if num_trees > 1 {
@@ -74,7 +95,7 @@ impl App {
         .padding(CONTAINER_PADDING_PX)
         .center_x(Fill);
 
-        column![graph_render, controls]
+        column![graphics_container, controls]
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -86,11 +107,30 @@ impl App {
     }
 
     fn update(&mut self, m: Message, now: Instant) {
-        if let Message::NextRound = m {
-            self.round_number += 1;
-            println!("Round {}", self.round_number);
+        match m {
+            Message::NextRound => {
+                self.round_number += 1;
+                println!("Round {}", self.round_number);
+                self.graph_editing = None;
+            }
+            Message::EditNode(node_index) => {
+                self.graph_editing = Some(GraphEditing::EditNode(node_index, String::new()));
+                return;
+            }
+            _ => {}
         }
         self.gr.tick(now);
         self.gr.apply_update(m);
+    }
+
+    fn node_editor(&self, node_index: NodeIndex, output: &str) -> Element<'_, Message> {
+        Float::new(text_input("id: ", output).width(CONTAINER_PADDING_PX))
+            .translate(move |bounds, viewport| {
+                let node_bounds = self.gr.node_bounds(node_index, viewport.size()).unwrap();
+                node_bounds.anchor(bounds.size(), Horizontal::Center, Vertical::Center)
+                    - bounds.position()
+            })
+            .scale(1.0)
+            .into()
     }
 }
