@@ -131,15 +131,17 @@ impl App {
     }
 
     fn node_editor(&self, node_index: NodeIndex, contents: &str) -> Element<'_, Message> {
+        let update_fn = move |s: String| {
+            Message::EditNode(
+                node_index,
+                TreeId::from_str(&s).map_or(TreeIdEdit::Invalid(s), TreeIdEdit::Valid),
+            )
+        };
         Float::new(
-            text_input(&self.gr.graph.nodes()[node_index].to_string(), contents)
+            text_input("", contents)
                 .width(Length::Fixed(40.0))
-                .on_input(move |s| {
-                    Message::EditNode(
-                        node_index,
-                        TreeId::from_str(&s).map_or(TreeIdEdit::Invalid(s), TreeIdEdit::Valid),
-                    )
-                }),
+                .on_input(update_fn)
+                .on_paste(update_fn),
         )
         .translate(move |bounds, _window_size| {
             let node_bounds = self.gr.node_bounds(node_index).unwrap();
