@@ -1,5 +1,3 @@
-use std::time::{Duration, Instant};
-
 use super::layout::{self, GraphLayout, NodeCenterPoint, RootPositions, ViewMode};
 use super::messages::Message;
 use crate::algorithm::timers::RoundType;
@@ -10,11 +8,13 @@ use crate::tree_color::TreeColor;
 use crate::tree_id::TreeId;
 use crate::ui::canvas::Text;
 use crate::ui::layout::transition::LayoutWithTransitions;
+use crate::ui::messages::TreeIdEdit;
 use crate::Configuration;
-use iced::mouse::{self, Button};
 use iced::widget::canvas::{self, path, Cache, Frame, Geometry, LineDash, Path, Stroke};
 use iced::{alignment, Color, Event, Point, Rectangle, Renderer, Size, Theme, Vector};
+use iced::{mouse, window};
 use rand::rngs::ThreadRng;
+use std::time::{Duration, Instant};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Settings {
@@ -27,6 +27,7 @@ pub struct GraphRenderer {
     pub graph: Graph,
     settings: Settings,
     layout: LayoutWithTransitions,
+    last_size: Option<Size>,
     render_cache: Cache,
     rng: ThreadRng,
 }
@@ -60,7 +61,7 @@ impl iced::widget::canvas::Program<Message> for GraphRenderer {
         cursor: mouse::Cursor,
     ) -> Option<canvas::Action<Message>> {
         match event {
-            Event::Mouse(mouse::Event::ButtonPressed(Button::Left)) => {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if let Some(cursor_position) = cursor.position_in(bounds) {
                     let node_radius = self.layout.node_radius(bounds.size());
                     for (i, node_center) in self
@@ -70,9 +71,13 @@ impl iced::widget::canvas::Program<Message> for GraphRenderer {
                         .enumerate()
                     {
                         if cursor_position.distance(node_center) < node_radius {
-                            println!("click {} -> {} [{:?}]", i, node_center, bounds.size());
+                            let tree_id = self.graph.nodes()[i].parenting().tree_id();
                             return Some(
-                                canvas::Action::publish(Message::EditNode(i)).and_capture(),
+                                canvas::Action::publish(Message::EditNode(
+                                    i,
+                                    TreeIdEdit::Valid(*tree_id),
+                                ))
+                                .and_capture(),
                             );
                         }
                     }
@@ -81,6 +86,16 @@ impl iced::widget::canvas::Program<Message> for GraphRenderer {
                     None
                 }
             }
+            Event::Window(
+                window::Event::Opened {
+                    position: _,
+                    size: _,
+                }
+                | window::Event::Resized(_)
+                | window::Event::Rescaled(_),
+            ) => Some(canvas::Action::publish(Message::UpdateBounds(
+                bounds.size(),
+            ))),
             _ => None,
         }
     }
@@ -116,6 +131,7 @@ impl Default for GraphRenderer {
             graph,
             settings,
             layout,
+            last_size: None,
             rng: rand::rng(),
             render_cache: Cache::default(),
         }
@@ -275,7 +291,8 @@ impl GraphRenderer {
                 self.settings.show_tentative_requests = new_value
             }
             Message::ViewMode(new_value) => self.settings.view_mode = new_value,
-            Message::Animate | Message::EditNode(_) => {}
+            Message::UpdateBounds(size) => self.last_size = Some(size),
+            _ => {}
         }
         match m {
             Message::ResizeGraph(_) => {
@@ -288,14 +305,22 @@ impl GraphRenderer {
                     Duration::from_secs(2),
                 )
             }
+            Message::EditNode(node_index, edit) => {
+                if let TreeIdEdit::Valid(tree_id) = edit {
+                    self.graph.edit_node(node_index).set_tree_id(tree_id)
+                }
+            }
             _ => {}
         }
         self.render_cache.clear();
     }
 
-    pub fn node_bounds(&self, node_index: NodeIndex, viewport_size: Size) -> Option<Rectangle> {
-        let node_center = *self.layout.arrange_nodes(viewport_size).get(node_index)?;
-        Some(Rectangle::new(node_center, Size::ZERO).expand(self.layout.node_radius(viewport_size)))
+    pub fn node_bounds(&self, node_index: NodeIndex) -> Option<Rectangle> {
+        let node_center = *self.layout.arrange_nodes(self.last_size?).get(node_index)?;
+        Some(
+            Rectangle::new(node_center, Size::ZERO)
+                .expand(self.layout.node_radius(self.last_size?)),
+        )
     }
 
     fn new_graph_layout(&self) -> Box<dyn GraphLayout> {

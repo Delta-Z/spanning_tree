@@ -139,4 +139,8 @@ impl Node {
         self.parenting.update_for_configuration(conf);
         self.timers.update_for_configuration(conf);
     }
+
+    pub fn set_tree_id(&mut self, value: TreeId) {
+        self.parenting.set_tree_id(value)
+    }
 }

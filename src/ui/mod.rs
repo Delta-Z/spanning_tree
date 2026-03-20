@@ -1,4 +1,5 @@
 use crate::graph::NodeIndex;
+use crate::tree_id::TreeId;
 use crate::ui::layout::RootPositions;
 use graph_renderer::GraphRenderer;
 use iced::alignment::Horizontal;
@@ -14,9 +15,12 @@ use iced::widget::{button, canvas, checkbox, column, space, text, Column};
 use iced::window;
 use iced::Element;
 use iced::Fill;
+use iced::Length;
 use iced::Subscription;
 use layout::ViewMode;
 use messages::Message;
+use messages::TreeIdEdit;
+use std::str::FromStr;
 
 mod graph_renderer;
 pub mod layout;
@@ -113,9 +117,12 @@ impl App {
                 println!("Round {}", self.round_number);
                 self.graph_editing = None;
             }
-            Message::EditNode(node_index) => {
-                self.graph_editing = Some(GraphEditing::EditNode(node_index, String::new()));
-                return;
+            Message::EditNode(node_index, ref edit) => {
+                let edit = match edit {
+                    TreeIdEdit::Valid(tree_id) => tree_id.to_string(),
+                    TreeIdEdit::Invalid(s) => s.to_string(),
+                };
+                self.graph_editing = Some(GraphEditing::EditNode(node_index, edit));
             }
             _ => {}
         }
@@ -123,14 +130,22 @@ impl App {
         self.gr.apply_update(m);
     }
 
-    fn node_editor(&self, node_index: NodeIndex, output: &str) -> Element<'_, Message> {
-        Float::new(text_input("id: ", output).width(CONTAINER_PADDING_PX))
-            .translate(move |bounds, viewport| {
-                let node_bounds = self.gr.node_bounds(node_index, viewport.size()).unwrap();
-                node_bounds.anchor(bounds.size(), Horizontal::Center, Vertical::Center)
-                    - bounds.position()
-            })
-            .scale(1.0)
-            .into()
+    fn node_editor(&self, node_index: NodeIndex, contents: &str) -> Element<'_, Message> {
+        Float::new(
+            text_input(&self.gr.graph.nodes()[node_index].to_string(), contents)
+                .width(Length::Fixed(40.0))
+                .on_input(move |s| {
+                    Message::EditNode(
+                        node_index,
+                        TreeId::from_str(&s).map_or(TreeIdEdit::Invalid(s), TreeIdEdit::Valid),
+                    )
+                }),
+        )
+        .translate(move |bounds, _window_size| {
+            let node_bounds = self.gr.node_bounds(node_index).unwrap();
+            node_bounds.anchor(bounds.size(), Horizontal::Center, Vertical::Center)
+                - bounds.position()
+        })
+        .into()
     }
 }

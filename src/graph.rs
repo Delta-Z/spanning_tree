@@ -154,6 +154,10 @@ impl Graph {
         &self.messages
     }
 
+    pub fn edit_node(&mut self, index: NodeIndex) -> &mut Node {
+        &mut self.nodes[index]
+    }
+
     fn send_messages(&mut self) {
         for (i, n) in self.nodes.iter().enumerate() {
             for m in n.send_messages() {

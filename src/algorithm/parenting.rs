@@ -100,6 +100,10 @@ impl ParentingData {
         self.parent = self.parent.filter(|i| *i < conf.n);
     }
 
+    pub fn set_tree_id(&mut self, value: TreeId) {
+        self.tree_id = value
+    }
+
     fn adopt_parent(&mut self, parent_request: &ReceivedRequest) {
         self.parent = Some(parent_request.source);
         self.tree_id = parent_request.tree_info.tree_id;

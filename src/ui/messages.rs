@@ -1,7 +1,14 @@
 use super::layout::{RootPositions, ViewMode};
-use crate::graph::NodeIndex;
+use crate::{graph::NodeIndex, tree_id::TreeId};
+use iced::Size;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
+pub enum TreeIdEdit {
+    Valid(TreeId),
+    Invalid(String),
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     NextRound,
     ResizeGraph(usize),
@@ -10,7 +17,8 @@ pub enum Message {
     RootPositions(RootPositions),
     ShowTentativeRequests(bool),
     // Graph editor:
-    EditNode(NodeIndex),
+    EditNode(NodeIndex, TreeIdEdit),
+    UpdateBounds(Size),
     // Generic animation:
     Animate,
 }
