@@ -143,20 +143,26 @@ impl ParentingData {
         }
     }
 
-    fn elect_parent(&self, mut requests: Vec<ReceivedRequest>) -> Option<ReceivedRequest> {
-        if self.is_root() {
-            requests.retain(|r| r.tree_info.tree_id > self.tree_id)
-        }
-        requests.into_iter().max_by(|t1, t2| {
-            t1.tree_info.cmp(&t2.tree_info).then(
-                // Nit: parent stability for nicer vis, non-essential for the algorithm.
-                if self.parent == Some(t1.source) {
-                    Ordering::Greater
-                } else {
-                    Ordering::Less
+    fn elect_parent(&self, requests: Vec<ReceivedRequest>) -> Option<ReceivedRequest> {
+        requests
+            .into_iter()
+            .max_by(|t1, t2| {
+                t1.tree_info.cmp(&t2.tree_info).then(
+                    // Nit: parent stability for nicer vis, non-essential for the algorithm.
+                    if self.parent == Some(t1.source) {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Less
+                    },
+                )
+            })
+            .filter(
+                |candidate| match candidate.tree_info.tree_id.cmp(&self.tree_id) {
+                    Ordering::Less => false,
+                    Ordering::Equal => candidate.tree_info.depth < self.my_depth,
+                    Ordering::Greater => true,
                 },
             )
-        })
     }
 
     pub fn process_requests(&mut self, messages: &[ReceivedMessage]) -> Option<TreeInfo> {
