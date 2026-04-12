@@ -50,7 +50,7 @@ impl ChordLayout {
                 RootPositions::Constant => (0..num_nodes).collect_vec(),
                 RootPositions::Sorted => {
                     let mut result: IndexSet<NodeIndex> = graph
-                        .trees()
+                        .trees(/*confirmed_only=*/ false)
                         .into_iter()
                         .sorted_by_key(|t| -(t.nodes().len() as i64))
                         .flatten()

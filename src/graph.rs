@@ -128,17 +128,17 @@ impl Graph {
         }
     }
 
-    pub fn trees<'a>(&'a self) -> Vec<Tree<'a>> {
+    pub fn trees<'a>(&'a self, confirmed_only: bool) -> Vec<Tree<'a>> {
         self.nodes
             .iter()
             .enumerate()
             .filter_map(|(i, n)| {
                 if let Some(p) = n.parenting().parent()
-                        && self.nodes[p].parenting().confirmed_children().contains(&i)
+                        && (!confirmed_only || self.nodes[p].parenting().children(confirmed_only).contains(&i))
                 {
                     None
                 } else {
-                    Some(Tree::new(self, self.subtree(i)))
+                    Some(Tree::new(self, self.subtree(i, confirmed_only)))
                 }
             })
             .collect()
@@ -156,6 +156,14 @@ impl Graph {
 
     pub fn edit_node(&mut self, index: NodeIndex) -> &mut Node {
         &mut self.nodes[index]
+    }
+
+    pub fn validate_parenting(&self, parent_index: NodeIndex, child_index: NodeIndex, confirmed_only: bool) -> bool {
+        let child_parenting = self.nodes[child_index].parenting();
+        let parent_parenting = self.nodes[parent_index].parenting();
+        child_parenting.parent() == Some(parent_index) && parent_parenting.children(confirmed_only).contains(&child_index)
+        // cycle breaking
+        // child_parenting.my_depth() > parent_parenting.my_depth()
     }
 
     fn send_messages(&mut self) {
@@ -181,13 +189,19 @@ impl Graph {
         }
     }
 
-    fn subtree(&self, node_index: NodeIndex) -> Vec<NodeIndex> {
+    fn subtree(&self, node_index: NodeIndex, confirmed_only: bool) -> Vec<NodeIndex> {
+        let parenting_root = self.nodes[node_index].parenting();
+        let root_depth = parenting_root.my_depth();
         let mut result = vec![node_index];
-        self.nodes[node_index]
-            .parenting()
-            .confirmed_children()
+        parenting_root
+            .children(confirmed_only)
             .iter()
-            .for_each(|i| result.extend(self.subtree(*i)));
+            .filter(|i| {
+                let child_parenting = self.nodes[**i].parenting();
+                child_parenting.parent() == Some(node_index) &&
+                // cycle breaking
+                child_parenting.my_depth() > root_depth } )
+            .for_each(|i| result.extend(self.subtree(*i, confirmed_only)));
         result
     }
 }

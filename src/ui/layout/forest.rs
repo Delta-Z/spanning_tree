@@ -27,7 +27,15 @@ impl Tree {
                 .last()
                 .unwrap()
                 .iter()
-                .flat_map(|i| graph.nodes()[*i].parenting().confirmed_children())
+                .flat_map(|i| {
+                    graph.nodes()[*i]
+                        .parenting()
+                        .children(/*confirmed_only=*/ false)
+                        .iter()
+                        .filter(|c| {
+                            graph.validate_parenting(*i, **c, /*confirmed_only=*/ false)
+                        })
+                })
                 .copied()
                 .collect_vec();
             if next_level.is_empty() {
@@ -86,7 +94,7 @@ impl GraphLayout for ForestLayout {
 
 impl ForestLayout {
     pub fn new(graph: &Graph, root_positions: RootPositions) -> Self {
-        let mut trees = graph.trees();
+        let mut trees = graph.trees(/*confirmed_only=*/ false);
         if root_positions == RootPositions::Sorted {
             trees.sort_by_key(|t| -(t.nodes().len() as i64));
         }

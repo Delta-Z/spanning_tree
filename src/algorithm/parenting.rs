@@ -83,12 +83,12 @@ impl ParentingData {
         self.my_depth
     }
 
-    pub fn confirmed_children(&self) -> &[NodeIndex] {
-        &self.children[..self.num_confirmed_children]
-    }
-
-    pub fn tentative_children(&self) -> &[NodeIndex] {
-        &self.children[self.num_confirmed_children..]
+    pub fn children(&self, confirmed_only: bool) -> &[NodeIndex] {
+        if confirmed_only {
+            &self.children[..self.num_confirmed_children]
+        } else {
+            &self.children[..]
+        }
     }
 
     pub fn update_for_configuration(&mut self, conf: &Configuration) {
