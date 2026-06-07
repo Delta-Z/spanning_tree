@@ -108,15 +108,15 @@ impl ParentingData {
         self.tree_id = value
     }
 
+    pub fn abandon_parent(&mut self) {
+        self.parent = None;
+        self.my_depth = 0;
+    }
+
     fn adopt_parent(&mut self, parent_request: &ReceivedRequest) {
         self.parent = Some(parent_request.source);
         self.tree_id = parent_request.tree_info.tree_id;
         self.my_depth = parent_request.tree_info.depth + 1;
-    }
-
-    fn become_root(&mut self) {
-        self.parent = None;
-        self.my_depth = 0;
     }
 
     fn regenerate_children(
@@ -191,9 +191,13 @@ impl ParentingData {
             Some(parent.tree_info)
         } else {
             if !self.is_root() {
-                println!("Becoming root {}", self.tree_id);
+                println!(
+                    "Abandoning [{}] {}",
+                    self.parent.expect("Is not root"),
+                    self.tree_id
+                );
             }
-            self.become_root();
+            self.abandon_parent();
             None
         }
     }

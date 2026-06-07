@@ -144,4 +144,8 @@ impl Node {
     pub fn set_tree_id(&mut self, value: TreeId) {
         self.parenting.set_tree_id(value)
     }
+
+    pub fn abandon_parent(&mut self) {
+        self.parenting.abandon_parent();
+    }
 }

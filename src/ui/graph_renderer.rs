@@ -300,16 +300,17 @@ impl GraphRenderer {
             _ => {}
         }
         match m {
-            Message::ResizeGraph(_) | Message::ChangeFanout(_) => {
+            Message::ResizeGraph(_) => {
                 self.layout = LayoutWithTransitions::new(self.new_graph_layout())
             }
-            Message::RootPositions(_) | Message::ViewMode(_) | Message::NextRound => {
-                self.layout.transition_to(
-                    self.new_graph_layout(),
-                    Instant::now(),
-                    Duration::from_secs(2),
-                )
-            }
+            Message::RootPositions(_)
+            | Message::ViewMode(_)
+            | Message::ChangeFanout(_)
+            | Message::NextRound => self.layout.transition_to(
+                self.new_graph_layout(),
+                Instant::now(),
+                Duration::from_secs(2),
+            ),
             Message::EditNode(node_index, TreeIdEdit::Valid(tree_id)) => {
                 self.graph.edit_node(node_index).set_tree_id(tree_id)
             }

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use crate::algorithm::RandomizableData;
 use crate::messages::ReceivedMessage;
 use crate::node::Node;
@@ -134,9 +135,18 @@ impl Graph {
         let downsized = new_fanout < self.conf.d;
         self.conf.d = new_fanout;
         if downsized {
-            self.nodes
-                .iter_mut()
-                .for_each(|n| n.update_for_configuration(&self.conf, false));
+            for node in &mut self.nodes {
+                node.update_for_configuration(&self.conf, false);
+            }
+            let orphaned_nodes = self.nodes.iter().enumerate().filter_map(|(i, node)| {
+                if let Some(parent) = node.parenting().parent() &&
+                    !self.validate_parenting(parent, i, false) {
+                        Some(i)
+                    } else { None }
+                }).collect_vec();
+            for i in orphaned_nodes {
+                self.nodes[i].abandon_parent();
+            }
         }
     }
 
