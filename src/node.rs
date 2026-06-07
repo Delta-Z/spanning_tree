@@ -135,8 +135,9 @@ impl Node {
         }
     }
 
-    pub fn update_for_configuration(&mut self, conf: &Configuration) {
-        self.parenting.update_for_configuration(conf);
+    pub fn update_for_configuration(&mut self, conf: &Configuration, reset_children: bool) {
+        self.parenting
+            .update_for_configuration(conf, reset_children);
         self.timers.update_for_configuration(conf);
     }
 

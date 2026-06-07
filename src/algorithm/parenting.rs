@@ -39,7 +39,7 @@ impl RandomizableData for ParentingData {
             } else {
                 rng.random_range(1..conf.n)
             },
-            children: Vec::with_capacity(conf.n),
+            children: Vec::with_capacity(conf.d),
             num_confirmed_children: 0,
         }
     }
@@ -91,12 +91,16 @@ impl ParentingData {
         }
     }
 
-    pub fn update_for_configuration(&mut self, conf: &Configuration) {
+    pub fn update_for_configuration(&mut self, conf: &Configuration, reset_children: bool) {
         self.children.retain(|i| *i < conf.n);
+        self.num_confirmed_children = if reset_children {
+            0
+        } else {
+            self.num_confirmed_children.min(conf.d)
+        };
         if self.children.len() > conf.d {
             self.children.truncate(conf.d);
         }
-        self.num_confirmed_children = 0;
         self.parent = self.parent.filter(|i| *i < conf.n);
     }
 

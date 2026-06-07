@@ -7,7 +7,6 @@ use iced::alignment::Vertical;
 use iced::time::Instant;
 use iced::widget::container;
 use iced::widget::row;
-use iced::widget::slider;
 use iced::widget::text_input;
 use iced::widget::Float;
 use iced::widget::Stack;
@@ -52,7 +51,7 @@ impl App {
         if let Some(graph_editing) = &self.graph_editing {
             match graph_editing {
                 GraphEditing::EditNode(node_index, output) => {
-                    graphics.push(self.node_editor(*node_index, output))
+                    graphics.push(self.node_id_text_input(*node_index, output))
                 }
             }
         }
@@ -66,11 +65,16 @@ impl App {
         if let Some(reset_countdown) = self.gr.reset_countdown() {
             status += &format!(", resetting in {} rounds", reset_countdown).to_string();
         }
+        let n = self.gr.graph_size();
         let controls = container(row![
-            text(format!("Graph size {} ", self.gr.graph_size())).align_y(Vertical::Center),
-            slider(3.0..=30.0, self.gr.graph.nodes().len() as f32, |x: f32| {
-                Message::ResizeGraph(x as usize)
-            }),
+            text("Graph size: "),
+            self.graph_size_text_input(n, |new_n| *new_n > 0, Message::ResizeGraph),
+            text(" fanout: "),
+            self.graph_size_text_input(
+                self.gr.node_fanout(),
+                move |new_d| *new_d > 0 && *new_d < n,
+                Message::ChangeFanout
+            ),
             space::horizontal().width(CONTAINER_PADDING_PX),
             checkbox(self.gr.settings().view_mode == ViewMode::Forest)
                 .label("show trees")
@@ -130,7 +134,7 @@ impl App {
         self.gr.apply_update(m);
     }
 
-    fn node_editor(&self, node_index: NodeIndex, contents: &str) -> Element<'_, Message> {
+    fn node_id_text_input(&self, node_index: NodeIndex, contents: &str) -> Element<'_, Message> {
         let update_fn = move |s: String| {
             Message::EditNode(
                 node_index,
@@ -149,5 +153,29 @@ impl App {
                 - bounds.position()
         })
         .into()
+    }
+
+    fn graph_size_text_input<'a, V>(
+        &self,
+        initial_value: usize,
+        value_validator: V,
+        message_constructor: fn(usize) -> Message,
+    ) -> Element<'a, Message>
+    where
+        V: Fn(&usize) -> bool + std::marker::Copy + 'a,
+    {
+        assert!(value_validator(&initial_value));
+        let update_fn = move |s: String| {
+            usize::from_str(&s)
+                .ok()
+                .filter(value_validator)
+                .map(message_constructor)
+                .unwrap_or(Message::NoOp)
+        };
+        text_input("", &initial_value.to_string())
+            .width(Length::Fixed(40.0))
+            .on_input(update_fn)
+            .on_paste(update_fn)
+            .into()
     }
 }

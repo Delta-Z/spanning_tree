@@ -112,7 +112,7 @@ impl Graph {
     }
 
     pub fn resize(&mut self, new_size: usize, rng: &mut impl Rng) {
-        assert!(new_size > 0, "cannot resize graph below 1");
+        assert!(new_size > 0, "graph must contain at least 1 node");
         let downsized = new_size < self.conf.n;
         self.conf.n = new_size;
         self.nodes
@@ -121,10 +121,22 @@ impl Graph {
         if downsized {
             self.nodes
                 .iter_mut()
-                .for_each(|n| n.update_for_configuration(&self.conf));
+                .for_each(|n| n.update_for_configuration(&self.conf, true));
             for messages in &mut self.messages {
                 messages.retain(|m| m.source < new_size);
             }
+        }
+    }
+
+    pub fn change_fanout(&mut self, new_fanout: usize) {
+        assert!(new_fanout > 0, "cannot reduce fanout below 1");
+        assert!(new_fanout <= self.conf.n, "cannot increase fanout above graph size");
+        let downsized = new_fanout < self.conf.d;
+        self.conf.d = new_fanout;
+        if downsized {
+            self.nodes
+                .iter_mut()
+                .for_each(|n| n.update_for_configuration(&self.conf, false));
         }
     }
 

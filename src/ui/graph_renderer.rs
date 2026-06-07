@@ -144,7 +144,11 @@ impl GraphRenderer {
     }
 
     pub fn graph_size(&self) -> usize {
-        self.graph.nodes().len()
+        self.graph.configuration().n
+    }
+
+    pub fn node_fanout(&self) -> usize {
+        self.graph.configuration().d
     }
 
     pub fn num_trees(&self) -> usize {
@@ -285,6 +289,7 @@ impl GraphRenderer {
     pub fn apply_update(&mut self, m: Message) {
         match m {
             Message::ResizeGraph(new_size) => self.graph.resize(new_size, &mut self.rng),
+            Message::ChangeFanout(new_fanout) => self.graph.change_fanout(new_fanout),
             Message::NextRound => self.graph.execute_round(&mut self.rng),
             Message::RootPositions(new_value) => self.settings.root_positions = new_value,
             Message::ShowTentativeRequests(new_value) => {
@@ -295,7 +300,7 @@ impl GraphRenderer {
             _ => {}
         }
         match m {
-            Message::ResizeGraph(_) => {
+            Message::ResizeGraph(_) | Message::ChangeFanout(_) => {
                 self.layout = LayoutWithTransitions::new(self.new_graph_layout())
             }
             Message::RootPositions(_) | Message::ViewMode(_) | Message::NextRound => {
@@ -305,10 +310,8 @@ impl GraphRenderer {
                     Duration::from_secs(2),
                 )
             }
-            Message::EditNode(node_index, edit) => {
-                if let TreeIdEdit::Valid(tree_id) = edit {
-                    self.graph.edit_node(node_index).set_tree_id(tree_id)
-                }
+            Message::EditNode(node_index, TreeIdEdit::Valid(tree_id)) => {
+                self.graph.edit_node(node_index).set_tree_id(tree_id)
             }
             _ => {}
         }

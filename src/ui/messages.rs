@@ -11,7 +11,9 @@ pub enum TreeIdEdit {
 #[derive(Debug, Clone)]
 pub enum Message {
     NextRound,
+    // Graph configuration:
     ResizeGraph(usize),
+    ChangeFanout(usize),
     // Graph view settings:
     ViewMode(ViewMode),
     RootPositions(RootPositions),
@@ -21,4 +23,6 @@ pub enum Message {
     UpdateBounds(Size),
     // Generic animation:
     Animate,
+    // NoOp
+    NoOp,
 }
