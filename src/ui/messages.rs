@@ -23,6 +23,9 @@ pub enum Message {
     UpdateBounds(Size),
     // Generic animation:
     Animate,
-    // NoOp
+    // Cycling UI focus:
+    FocusNextUiControl,
+    FocusPrevUiControl,
+    // NoOp command.
     NoOp,
 }

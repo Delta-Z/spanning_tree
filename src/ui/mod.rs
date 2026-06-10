@@ -4,8 +4,11 @@ use crate::ui::layout::RootPositions;
 use graph_renderer::GraphRenderer;
 use iced::alignment::Horizontal;
 use iced::alignment::Vertical;
+use iced::keyboard;
+use iced::keyboard::key::{self, Key};
 use iced::time::Instant;
 use iced::widget::container;
+use iced::widget::operation;
 use iced::widget::row;
 use iced::widget::text_input;
 use iced::widget::Float;
@@ -16,6 +19,7 @@ use iced::Element;
 use iced::Fill;
 use iced::Length;
 use iced::Subscription;
+use iced::Task;
 use layout::ViewMode;
 use messages::Message;
 use messages::TreeIdEdit;
@@ -107,14 +111,36 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if self.gr.is_animating() {
+        let animation = if self.gr.is_animating() {
             window::frames().map(|_| Message::Animate)
         } else {
             Subscription::none()
-        }
+        };
+        let keyboard_sub = iced::keyboard::listen().filter_map(|event| match event {
+            keyboard::Event::KeyPressed {
+                key: Key::Named(key::Named::Tab),
+                modifiers,
+                ..
+            } => {
+                if modifiers.shift() {
+                    Some(Message::FocusPrevUiControl)
+                } else {
+                    Some(Message::FocusNextUiControl)
+                }
+            }
+            _ => None,
+        });
+        Subscription::batch(vec![animation, keyboard_sub])
     }
 
-    fn update(&mut self, m: Message, now: Instant) {
+    fn update(&mut self, m: Message, now: Instant) -> Task<Message> {
+        if let Some(ui_op) = match &m {
+            Message::FocusNextUiControl => Some(operation::focus_next()),
+            Message::FocusPrevUiControl => Some(operation::focus_previous()),
+            _ => None,
+        } {
+            return ui_op;
+        }
         match m {
             Message::NextRound => {
                 self.round_number += 1;
@@ -129,9 +155,10 @@ impl App {
                 self.graph_editing = Some(GraphEditing::EditNode(node_index, edit));
             }
             _ => {}
-        }
+        };
         self.gr.tick(now);
         self.gr.apply_update(m);
+        Task::none()
     }
 
     fn node_id_text_input(&self, node_index: NodeIndex, contents: &str) -> Element<'_, Message> {
@@ -179,3 +206,16 @@ impl App {
             .into()
     }
 }
+
+// impl Default for ControlIds {
+//     fn default() -> Self {
+//         Self {
+//             graph_size: Id::unique(),
+//             fanout_size: Id::unique(),
+//             forest_checkbox: Id::unique(),
+//             next_round_button: Id::unique(),
+//             Id::unique(),
+//             Id::unique(),
+//         }
+//     }
+// }
